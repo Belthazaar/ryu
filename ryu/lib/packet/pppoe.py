@@ -219,7 +219,7 @@ class tag(stringify.StringifyMixin):
     def parser(cls, buf):
         (tg, length) = struct.unpack_from(cls._UNPACK_STR, buf)
         buf = buf[cls._MIN_LEN:]
-        value_unpack_str = f'{length}s'
+        value_unpack_str = '%ds' % length
         value_list = []
         if tg == PPPOE_VENDOR_SPECIFIC:
             offset = struct.calcsize(cls._VENDOR_ID_UNPACK_STR)
@@ -247,7 +247,7 @@ class tag(stringify.StringifyMixin):
 
     def serialize(self):
         self.length = len(self.value)
-        tags_pack_str = f'!HH{self.length}s'
+        tags_pack_str = '!HH%ds' % self.length
         return struct.pack(tags_pack_str, self.tg, self.length, self.value)
 
 class vendor_specific_tag(stringify.StringifyMixin):
@@ -285,11 +285,11 @@ class vendor_specific_tag(stringify.StringifyMixin):
     def parser(cls, buf):
         (code, length) = struct.unpack_from(cls._UNPACK_STR, buf)
         buf = buf[cls._MIN_LEN:]
-        value_unpack_str = f'{length}s'
+        value_unpack_str = '%ds' % length
         value = struct.unpack_from(value_unpack_str, buf)[0]
         return cls(code, value, length)
 
     def serialize(self):
         self.length = len(self.value)
-        tag_pack_str = f'!BB{self.length}s'
+        tag_pack_str = '!BB%ds' % self.length
         return struct.pack(tag_pack_str, self.code, self.length, self.value)
