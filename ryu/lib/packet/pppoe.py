@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-PPPoE packet parser/serializer
+PPPoE packet parser/serializer.
 """
 # RFC 2516
 # PPPoE packet format
@@ -65,7 +65,7 @@ PPPOE_REMOTE_ID = 0x02
 
 
 class pppoe(packet_base.PacketBase):
-    """ PPPoE (RFC 2516) header encoder/decoder class.
+    """PPPoE (RFC 2516) header encoder/decoder class.
 
     The serialized packet would look like the ones described in
     the following sections.
@@ -128,8 +128,9 @@ class pppoe(packet_base.PacketBase):
         return struct.pack(self._PPPOE_PACK_STR, self.ver, self.ptype,
                            self.code, self.sid, self.total_length) + tag_buf
 
+
 class tags(stringify.StringifyMixin):
-    """ PPPoE (RFC 2516) tags encode/decoder class.
+    """PPPoE (RFC 2516) tags encode/decoder class.
 
     This is used with ryu.lib.packet.pppoe.pppoe.
 
@@ -181,9 +182,8 @@ class tags(stringify.StringifyMixin):
         return seri_tag
 
 
-
 class tag(stringify.StringifyMixin):
-    """ PPPoE (RFC 2516) tags encoder/decoder class
+    """PPPoE (RFC 2516) tags encoder/decoder class.
 
     This is used with ryu.lib.packet.pppoe.pppoe.tags
 
@@ -250,8 +250,9 @@ class tag(stringify.StringifyMixin):
         tags_pack_str = '!HH%ds' % self.length
         return struct.pack(tags_pack_str, self.tg, self.length, self.value)
 
+
 class vendor_specific_tag(stringify.StringifyMixin):
-    """ PPPoE access loop identification tag (Broadband Forum TR-101)
+    """PPPoE access loop identification tag (Broadband Forum TR-101)
 
     This is used with ryu.lib.packet.pppoe.pppoe.tags.tag.
 
