@@ -203,7 +203,7 @@ class tag(stringify.StringifyMixin):
                     (calculated automatically from the length of the value.)
     =============== ====================
     """
-    _UNPACK_STR = "!H"
+    _UNPACK_STR = "!HH"
     _MIN_LEN = struct.calcsize(_UNPACK_STR)
     _VENDOR_ID_UNPACK_STR = '!I'
     _BBF_IANA_ENTRY = 0x00000DE9
@@ -217,10 +217,7 @@ class tag(stringify.StringifyMixin):
 
     @classmethod
     def parser(cls, buf):
-        # (tg, length) = struct.unpack_from(cls._UNPACK_STR, buf)
-        tg = struct.unpack_from(cls._UNPACK_STR, buf)[0]
-        buf = buf[cls._MIN_LEN:]
-        length = struct.unpack_from(cls._UNPACK_STR, buf)[0]
+        (tg, length) = struct.unpack_from(cls._UNPACK_STR, buf)
         buf = buf[cls._MIN_LEN:]
         value_unpack_str = f'{length}s'
         value_list = []
@@ -275,7 +272,7 @@ class vendor_specific_tag(stringify.StringifyMixin):
                     (calculated automatically from the length of value.)
     =============== ====================
     """
-    _UNPACK_STR = "!B"
+    _UNPACK_STR = "!BB"
     _MIN_LEN = struct.calcsize(_UNPACK_STR)
 
     def __init__(self, code, value, length=0):
@@ -286,10 +283,7 @@ class vendor_specific_tag(stringify.StringifyMixin):
 
     @classmethod
     def parser(cls, buf):
-        # (code, length) = struct.unpack_from(cls._UNPACK_STR, buf)
-        code = struct.unpack_from(cls._UNPACK_STR, buf)[0]
-        buf = buf[cls._MIN_LEN:]
-        length = struct.unpack_from(cls._UNPACK_STR, buf)[0]
+        (code, length) = struct.unpack_from(cls._UNPACK_STR, buf)
         buf = buf[cls._MIN_LEN:]
         value_unpack_str = f'{length}s'
         value = struct.unpack_from(value_unpack_str, buf)[0]
