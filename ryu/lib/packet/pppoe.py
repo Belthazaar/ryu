@@ -95,6 +95,7 @@ class pppoe(packet_base.PacketBase):
 
     _PPPOE_PACK_STR = "!BBHH"
     _MIN_LEN = struct.calcsize(_PPPOE_PACK_STR)
+    _class_prefixes = ['tags']
 
     def __init__(self, ver=0x1, ptype=0x1, code=0, sid=0x0000,
                  total_length=0, tags=None):
@@ -125,8 +126,9 @@ class pppoe(packet_base.PacketBase):
         tag_buf = bytearray()
         if self.tags is not None:
             tag_buf = self.tags.serialize()
-        return struct.pack(self._PPPOE_PACK_STR, self.ver, self.ptype,
-                           self.code, self.sid, self.total_length) + tag_buf
+        version = self.ver << 4 | self.ptype
+        return struct.pack(self._PPPOE_PACK_STR, version, self.code, self.sid,
+                           self.total_length) + tag_buf
 
 
 class tags(stringify.StringifyMixin):
@@ -148,6 +150,7 @@ class tags(stringify.StringifyMixin):
     =============== ====================
     """
     _TAG_LEN_BYTE = 4
+    _class_prefixes = ['tag']
 
     def __init__(self, tag_list=None, tags_len=0):
         super(tags, self).__init__()
@@ -172,7 +175,7 @@ class tags(stringify.StringifyMixin):
         return cls(tag_parse_list, len(buf))
 
     def serialize(self):
-        seri_tag = None
+        seri_tag = ""
         for tg in self.tag_list:
             if isinstance(tg, tag):
                 seri_tag += tg.serialize()
@@ -220,32 +223,32 @@ class tag(stringify.StringifyMixin):
         (tg, length) = struct.unpack_from(cls._UNPACK_STR, buf)
         buf = buf[cls._MIN_LEN:]
         value_unpack_str = '%ds' % length
-        value_list = []
         if tg == PPPOE_VENDOR_SPECIFIC:
-            offset = struct.calcsize(cls._VENDOR_ID_UNPACK_STR)
             tag_value = struct.unpack_from(cls._VENDOR_ID_UNPACK_STR, buf)[0]
             if tag_value == cls._BBF_IANA_ENTRY:
-                value_list.append(tag_value)
+                offset = struct.calcsize(cls._VENDOR_ID_UNPACK_STR)
+                value = []
+                value.append(tag_value)
                 while length > offset:
                     sub_tag_buf = buf[offset:]
                     try:
                         sub_tag = vendor_specific_tag.parser(sub_tag_buf)
                     except struct.error:
-                        value_list.append(sub_tag_buf)
+                        value.append(sub_tag_buf)
                         break
                     if sub_tag is None:
                         break
-                    value_list.append(sub_tag)
+                    value.append(sub_tag)
                     offset += sub_tag.length + cls._TAG_LEN_BYTE
             else:
                 value = struct.unpack_from(value_unpack_str, buf)[0]
-                value_list.append(value)
         else:
             value = struct.unpack_from(value_unpack_str, buf)[0]
-            value_list.append(value)
-        return cls(tg, value_list, length)
+        return cls(tg, value, length)
 
     def serialize(self):
+        if self.value is None:
+            self.value = ''
         self.length = len(self.value)
         tags_pack_str = '!HH%ds' % self.length
         return struct.pack(tags_pack_str, self.tg, self.length, self.value)
