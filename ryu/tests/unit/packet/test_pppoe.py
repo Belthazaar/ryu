@@ -35,6 +35,7 @@ class Test_pppoe_connection(unittest.TestCase):
     code = pppoe.PPPOE_ACTIVE_DISCOVERY_INITIATION
     sid = 0
     total_length = 137
+    vslength = 60
 
     tag_list = [
         pppoe.tag(pppoe.PPPOE_AC_COOKIE, b'test-cookie', 11),
@@ -58,14 +59,15 @@ class Test_pppoe_connection(unittest.TestCase):
             pppoe.vendor_specific_tag(0x02,
                                       'Network1234567890',
                                       17)],
-                  52)]
+                  56)]
 
     tags = pppoe.tags(tag_list=tag_list, tags_len=137)
-
-    vstags = pppoe.tags(tag_list=vstag_list, tags_len=56)
+    vstags = pppoe.tags(tag_list=vstag_list, tags_len=60)
 
     pppo = pppoe.pppoe(ver=ver, ptype=ptype, code=code, sid=sid,
                        total_length=total_length, tags=tags)
+    vspppo = pppoe.pppoe(ver=ver, ptype=ptype, code=code, sid=sid,
+                         total_length=vslength, tags=vstags)
 
     buf = (
         b"\x11\x09\x00\x00\x00\x89\x01\x04\x00\x0b\x74\x65\x73\x74\x2d\x63"
@@ -77,6 +79,13 @@ class Test_pppoe_connection(unittest.TestCase):
         b"\x76\x61\x6c\x69\x64\x20\x61\x63\x20\x6e\x61\x6d\x65\x02\x03\x00"
         b"\x12\x55\x73\x65\x72\x20\x65\x6e\x64\x65\x64\x20\x73\x65\x73\x73"
         b"\x69\x6f\x6e\x01\x05\x00\x04\x00\x00\x0d\xe0\x00\x00\x00\x00")
+
+    vsbuf = (
+        b"\x11\x09\x00\x00\x00\x3c\x01\x05\x00\x38\x00\x00\x0d\xe9\x01\x1f"
+        b"\x41\x63\x63\x65\x73\x73\x2d\x4e\x6f\x64\x65\x2d\x49\x64\x65\x6e"
+        b"\x74\x69\x66\x69\x65\x72\x20\x65\x74\x68\x20\x33\x2f\x31\x32\x02"
+        b"\x11\x4e\x65\x74\x77\x6f\x72\x6b\x31\x32\x33\x34\x35\x36\x37\x38"
+        b"\x39\x30")
 
     def setUp(self):
         pass
@@ -101,6 +110,17 @@ class Test_pppoe_connection(unittest.TestCase):
         eq_(self.sid, res.sid)
         eq_(self.total_length, res.total_length)
         eq_(str(self.tags), str(res.tags))
+        eq_(b'', rest)
+
+    def test_vsparser(self):
+        res, rest = pppoe.pppoe.parser(self.vsbuf)
+
+        eq_(self.ver, res.ver)
+        eq_(self.ptype, res.ptype)
+        eq_(self.code, res.code)
+        eq_(self.sid, res.sid)
+        eq_(self.vslength, res.total_length)
+        eq_(str(self.vstags), str(res.tags))
         eq_(b'', rest)
 
     def test_parser_corrupted(self):
@@ -131,6 +151,21 @@ class Test_pppoe_connection(unittest.TestCase):
         tags = pppoe.tags.parser(
             buf[struct.calcsize(pppoe.pppoe._PPPOE_PACK_STR):])
         eq_(str(self.tags), str(tags))
+
+    def test_vsserialize(self):
+        vsbuf = self.vspppo.serialize()
+
+        res = struct.unpack_from(pppoe.pppoe._PPPOE_PACK_STR,
+                                 six.binary_type(vsbuf))
+
+        eq_(self.ptype, res[0] & 0xf)
+        eq_(self.ver, res[0] >> 4)
+        eq_(self.code, res[1])
+        eq_(self.sid, res[2])
+        eq_(self.vslength, res[3])
+        tags = pppoe.tags.parser(
+            vsbuf[struct.calcsize(pppoe.pppoe._PPPOE_PACK_STR):])
+        eq_(str(self.vstags), str(tags))
 
     def test_to_string(self):
         tag_values = ['tg', 'length', 'value']

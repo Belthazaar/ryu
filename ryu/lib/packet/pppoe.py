@@ -249,9 +249,25 @@ class tag(stringify.StringifyMixin):
     def serialize(self):
         if self.value is None:
             self.value = ''
-        self.length = len(self.value)
+        value = ""
+        vendor_id = None
+        for val in self.value:
+            if isinstance(val, vendor_specific_tag):
+                value += val.serialize()
+            else:
+                if val == 3561:
+                    vendor_id = val
+                else:
+                    value += str(val)
+        self.length = len(value)
+        if vendor_id:
+            tags_pack_str = '!HHI%ds' % self.length
+            self.length += struct.calcsize('!I')
+            return struct.pack(tags_pack_str, self.tg, self.length,
+                               vendor_id, value)
+
         tags_pack_str = '!HH%ds' % self.length
-        return struct.pack(tags_pack_str, self.tg, self.length, self.value)
+        return struct.pack(tags_pack_str, self.tg, self.length, value)
 
 
 class vendor_specific_tag(stringify.StringifyMixin):
