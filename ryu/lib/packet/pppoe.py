@@ -222,28 +222,31 @@ class tag(stringify.StringifyMixin):
     def parser(cls, buf):
         (tg, length) = struct.unpack_from(cls._UNPACK_STR, buf)
         buf = buf[cls._MIN_LEN:]
-        value_unpack_str = '%ds' % length
-        if tg == PPPOE_VENDOR_SPECIFIC:
-            tag_value = struct.unpack_from(cls._VENDOR_ID_UNPACK_STR, buf)[0]
-            if tag_value == cls._BBF_IANA_ENTRY:
-                offset = struct.calcsize(cls._VENDOR_ID_UNPACK_STR)
-                value = []
-                value.append(tag_value)
-                while length > offset:
-                    sub_tag_buf = buf[offset:]
-                    try:
-                        sub_tag = vendor_specific_tag.parser(sub_tag_buf)
-                    except struct.error:
-                        value.append(sub_tag_buf)
-                        break
-                    if sub_tag is None:
-                        break
-                    value.append(sub_tag)
-                    offset += sub_tag.length + cls._TAG_LEN_BYTE
-            else:
-                value = struct.unpack_from(value_unpack_str, buf)[0]
-        else:
+
+        if tg != PPPOE_VENDOR_SPECIFIC:
+            value_unpack_str = '%ds' % length
             value = struct.unpack_from(value_unpack_str, buf)[0]
+            return cls(tg, value, length)
+
+        tag_value = struct.unpack_from(cls._VENDOR_ID_UNPACK_STR, buf)[0]
+        if tag_value != cls._BBF_IANA_ENTRY:
+            value_unpack_str = '%ds' % length
+            value = struct.unpack_from(value_unpack_str, buf)[0]
+            return cls(tg, value, length)
+
+        offset = struct.calcsize(cls._VENDOR_ID_UNPACK_STR)
+        value = [tag_value]
+        while length > offset:
+            sub_tag_buf = buf[offset:]
+            try:
+                sub_tag = vendor_specific_tag.parser(sub_tag_buf)
+            except struct.error:
+                value.append(sub_tag_buf)
+                break
+            if sub_tag is None:
+                break
+            value.append(sub_tag)
+            offset += sub_tag.length + cls._TAG_LEN_BYTE
         return cls(tg, value, length)
 
     def serialize(self):
