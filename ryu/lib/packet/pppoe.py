@@ -12,6 +12,7 @@
 # implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 """
 PPPoE packet parser/serializer.
 """
@@ -164,23 +165,23 @@ class tags(stringify.StringifyMixin):
         while len(buf) > offset:
             tag_buf = buf[offset:]
             try:
-                tg = tag.parser(tag_buf)
+                tag_ = tag.parser(tag_buf)
             except struct.error:
                 tag_parse_list.append(tag_buf)
                 break
-            if tg is None:
+            if tag_ is None:
                 break
-            tag_parse_list.append(tg)
-            offset += tg.length + cls._TAG_LEN_BYTE
+            tag_parse_list.append(tag_)
+            offset += tag_.length + cls._TAG_LEN_BYTE
         return cls(tag_parse_list, len(buf))
 
     def serialize(self):
         seri_tag = ""
-        for tg in self.tag_list:
-            if isinstance(tg, tag):
-                seri_tag += tg.serialize()
+        for tag_ in self.tag_list:
+            if isinstance(tag_, tag):
+                seri_tag += tag_.serialize()
             else:
-                seri_tag += tg
+                seri_tag += tag_
         self.tags_len = len(seri_tag)
         return seri_tag
 
@@ -199,7 +200,7 @@ class tag(stringify.StringifyMixin):
     =============== ====================
     Attribute       Description
     =============== ====================
-    tag             Tag type
+    tag_type        Tag type
     value           Tag's value. \
                     (set the value that has been converted to hexadecimal.)
     length          Tag's value length. \
@@ -212,34 +213,34 @@ class tag(stringify.StringifyMixin):
     _BBF_IANA_ENTRY = 0x00000DE9
     _TAG_LEN_BYTE = 2
 
-    def __init__(self, tg, value, length=0):
+    def __init__(self, tag_type, value, length=0):
         super(tag, self).__init__()
-        self.tg = tg
+        self.tag_type = tag_type
         self.value = value
         self.length = length
 
     @classmethod
     def parser(cls, buf):
-        (tg, length) = struct.unpack_from(cls._UNPACK_STR, buf)
+        (tag_type, length) = struct.unpack_from(cls._UNPACK_STR, buf)
         buf = buf[cls._MIN_LEN:]
 
-        if tg != PPPOE_VENDOR_SPECIFIC:
+        if tag_type != PPPOE_VENDOR_SPECIFIC:
             value_unpack_str = '%ds' % length
             value = struct.unpack_from(value_unpack_str, buf)[0]
-            return cls(tg, value, length)
+            return cls(tag_type, value, length)
 
         tag_value = struct.unpack_from(cls._VENDOR_ID_UNPACK_STR, buf)[0]
         if tag_value != cls._BBF_IANA_ENTRY:
             value_unpack_str = '%ds' % length
             value = struct.unpack_from(value_unpack_str, buf)[0]
-            return cls(tg, value, length)
+            return cls(tag_type, value, length)
 
         offset = struct.calcsize(cls._VENDOR_ID_UNPACK_STR)
         value = [tag_value]
         while length > offset:
             sub_tag_buf = buf[offset:]
             try:
-                sub_tag = vendor_specific_tag.parser(sub_tag_buf)
+                sub_tag = VendorTag.parser(sub_tag_buf)
             except struct.error:
                 value.append(sub_tag_buf)
                 break
@@ -247,7 +248,7 @@ class tag(stringify.StringifyMixin):
                 break
             value.append(sub_tag)
             offset += sub_tag.length + cls._TAG_LEN_BYTE
-        return cls(tg, value, length)
+        return cls(tag_type, value, length)
 
     def serialize(self):
         if self.value is None:
@@ -255,7 +256,7 @@ class tag(stringify.StringifyMixin):
         value = ""
         vendor_id = None
         for val in self.value:
-            if isinstance(val, vendor_specific_tag):
+            if isinstance(val, VendorTag):
                 value += val.serialize()
             else:
                 if val == 3561:
@@ -266,14 +267,14 @@ class tag(stringify.StringifyMixin):
         if vendor_id:
             tags_pack_str = '!HHI%ds' % self.length
             self.length += struct.calcsize('!I')
-            return struct.pack(tags_pack_str, self.tg, self.length,
+            return struct.pack(tags_pack_str, self.tag_type, self.length,
                                vendor_id, value)
 
         tags_pack_str = '!HH%ds' % self.length
-        return struct.pack(tags_pack_str, self.tg, self.length, value)
+        return struct.pack(tags_pack_str, self.tag_type, self.length, value)
 
 
-class vendor_specific_tag(stringify.StringifyMixin):
+class VendorTag(stringify.StringifyMixin):
     """PPPoE access loop identification tag (Broadband Forum TR-101)
 
     This is used with ryu.lib.packet.pppoe.pppoe.tags.tag.
@@ -299,7 +300,7 @@ class vendor_specific_tag(stringify.StringifyMixin):
     _MIN_LEN = struct.calcsize(_UNPACK_STR)
 
     def __init__(self, code, value, length=0):
-        super(vendor_specific_tag, self).__init__()
+        super(VendorTag, self).__init__()
         self.code = code
         self.value = value
         self.length = length

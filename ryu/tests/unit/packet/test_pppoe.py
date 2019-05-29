@@ -53,12 +53,12 @@ class Test_pppoe_connection(unittest.TestCase):
     vstag_list = [
         pppoe.tag(pppoe.PPPOE_VENDOR_SPECIFIC, [
             3561,
-            pppoe.vendor_specific_tag(0x01,
-                                      'Access-Node-Identifier eth 3/12',
-                                      31),
-            pppoe.vendor_specific_tag(0x02,
-                                      'Network1234567890',
-                                      17)],
+            pppoe.VendorTag(0x01,
+                            'Access-Node-Identifier eth 3/12',
+                            31),
+            pppoe.VendorTag(0x02,
+                            'Network1234567890',
+                            17)],
                   56)]
 
     tags = pppoe.tags(tag_list=tag_list, tags_len=137)
@@ -168,7 +168,7 @@ class Test_pppoe_connection(unittest.TestCase):
         eq_(str(self.vstags), str(tags))
 
     def test_to_string(self):
-        tag_values = ['tg', 'length', 'value']
+        tag_values = ['tag_type', 'length', 'value']
         tag_str_list = []
         for tag in self.tag_list:
             _tag_str = ','.join(['%s=%s' % (k, repr(getattr(tag, k)))
