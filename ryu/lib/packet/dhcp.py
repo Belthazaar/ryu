@@ -83,6 +83,7 @@ DHCP_SERVER_IDENTIFIER_OPT = 54
 DHCP_PARAMETER_REQUEST_LIST_OPT = 55
 DHCP_RENEWAL_TIME_OPT = 58
 DHCP_REBINDING_TIME_OPT = 59
+DHCP_RELAY_AGENT_OPT = 82
 DHCP_CLASSLESS_ROUTE_OPT = 121
 DHCP_END_OPT = 255
 
@@ -309,6 +310,8 @@ class option(stringify.StringifyMixin):
     """
     _UNPACK_STR = '!B'
     _MIN_LEN = struct.calcsize(_UNPACK_STR)
+    _class_prefixes = ['RelayAgentSuboption']
+    _TAG_LEN_BYTE = 2
 
     def __init__(self, tag, value, length=0):
         super(option, self).__init__()
@@ -325,10 +328,76 @@ class option(stringify.StringifyMixin):
         length = struct.unpack_from(cls._UNPACK_STR, buf)[0]
         buf = buf[cls._MIN_LEN:]
         value_unpack_str = '%ds' % length
+        if tag == DHCP_RELAY_AGENT_OPT:
+            offset = 0
+            value = []
+            while length > offset:
+                sub_opt_buf = buf[offset:]
+                try:
+                    sub_opt = RelayAgentSuboption.parser(sub_opt_buf)
+                except struct.error:
+                    value.append(sub_opt_buf)
+                    break
+                if sub_opt is None:
+                    break
+                value.append(sub_opt)
+                offset += sub_opt.length + cls._TAG_LEN_BYTE
+            return cls(tag, value, length)
+
         value = struct.unpack_from(value_unpack_str, buf)[0]
         return cls(tag, value, length)
 
     def serialize(self):
-        self.length = len(self.value)
+        if self.value is None:
+            self.value = ''
+        value = ""
+        for val in self.value:
+            if isinstance(val, RelayAgentSuboption):
+                value += val.serialize()
+            else:
+                value += str(val)
+        self.length = len(value)
         options_pack_str = '!BB%ds' % self.length
-        return struct.pack(options_pack_str, self.tag, self.length, self.value)
+        return struct.pack(options_pack_str, self.tag, self.length, value)
+
+
+class RelayAgentSuboption(stringify.StringifyMixin):
+    """ DHCP Relay Agent Information Option (RFC 4243) encoder/decoder class
+
+    This is used with ryu.lib.packet.dhcp.dhcp.options.option.
+
+    An instance has the following attributes at least.
+    Most of them are same to the on-wire counterparts but in host byte order.
+    __init__ takes the corresponding args in this order.
+
+    ============== ====================
+    Attribute      Description
+    ============== ====================
+    subopt         Sub-option code.
+    value          Option's value.\
+                   (set the value that has been converted to hexadecimal.)
+    length         Option's value length.\
+                   (calculated automatically from the length of value.)
+    ============== ====================
+    """
+    _UNPACK_STR = '!BB'
+    _MIN_LEN = struct.calcsize(_UNPACK_STR)
+
+    def __init__(self, subopt, value, length=0):
+        super(RelayAgentSuboption, self).__init__()
+        self.subopt = subopt
+        self.value = value
+        self.length = length
+
+    @classmethod
+    def parser(cls, buf):
+        (subopt, length) = struct.unpack_from(cls._UNPACK_STR, buf)
+        buf = buf[cls._MIN_LEN:]
+        value_unpack_str = '%ds' % length
+        value = struct.unpack_from(value_unpack_str, buf)[0]
+        return cls(subopt, value, length)
+
+    def serialize(self):
+        self.length = len(self.value)
+        tag_pack_str = '!BB%ds' % self.length
+        return struct.pack(tag_pack_str, self.subopt, self.length, self.value)

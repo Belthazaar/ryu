@@ -55,9 +55,13 @@ class Test_dhcp_offer(unittest.TestCase):
         dhcp.option(dhcp.DHCP_IP_ADDR_LEASE_TIME_OPT, b'\x00\x03\xf4\x80', 4),
         dhcp.option(dhcp.DHCP_RENEWAL_TIME_OPT, b'\x00\x01\xfa\x40', 4),
         dhcp.option(dhcp.DHCP_REBINDING_TIME_OPT, b'\x00\x03\x75\xf0', 4),
+        dhcp.option(dhcp.DHCP_RELAY_AGENT_OPT, [
+            dhcp.RelayAgentSuboption(1, 'eth0', 4),
+            dhcp.RelayAgentSuboption(2, 'Network1234567890', 17)], 25),
         dhcp.option(dhcp.DHCP_SERVER_IDENTIFIER_OPT, b'\xc0\xa8\x0a\x09', 4)]
+
     magic_cookie = '99.130.83.99'
-    options = dhcp.options(option_list=option_list, options_len=50,
+    options = dhcp.options(option_list=option_list, options_len=77,
                            magic_cookie=magic_cookie)
 
     dh = dhcp.dhcp(op, chaddr, options, htype=htype, hlen=hlen,
@@ -83,7 +87,9 @@ class Test_dhcp_offer(unittest.TestCase):
         b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x63\x82\x53\x63"
         b"\x35\x01\x02\x01\x04\xff\xff\xff\x00\x03\x04\xc0\xa8\x0a\x09\x06"
         b"\x04\xc0\xa8\x0a\x09\x33\x04\x00\x03\xf4\x80\x3a\x04\x00\x01\xfa"
-        b"\x40\x3b\x04\x00\x03\x75\xf0\x36\x04\xc0\xa8\x0a\x09\xff")
+        b"\x40\x3b\x04\x00\x03\x75\xf0\x52\x19\x01\x04\x65\x74\x68\x30\x02"
+        b"\x11\x4e\x65\x74\x77\x6f\x72\x6b\x31\x32\x33\x34\x35\x36\x37\x38"
+        b"\x39\x30\x36\x04\xc0\xa8\x0a\x09\xff")
 
     def setUp(self):
         pass
